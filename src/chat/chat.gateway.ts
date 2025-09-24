@@ -7,8 +7,9 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
-
-@WebSocketGateway(3080)
+@WebSocketGateway({ cors: {
+    origin: "*"
+  },})
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -17,6 +18,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleConnection(client: Socket) {
     const username = client.handshake.query.username as string;
+    console.log('Client connected:', client.id, 'Username:', username);
 
     if (username) {
       this.users.set(client.id, username);
@@ -29,6 +31,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     const username = this.users.get(client.id);
+    console.log('Client disconnected:', client.id, 'Username:', username);
 
     if (username) {
       this.users.delete(client.id);
@@ -40,13 +43,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('send-message')
-  handleMessage(client: Socket, message: string) {
+  handleMessage(client: Socket, data: { message: string }) {
     const username = this.users.get(client.id);
+    console.log('Message from', username, ':', data.message);
 
-    if (username && message.trim() !== '') {
+    if (username && data.message.trim() !== '') {
       this.server.emit('new-message', {
         username,
-        message: message.trim(),
+        message: data.message.trim(),
         timestamp: new Date(),
       });
     }
